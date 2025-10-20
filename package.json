@@ -149,7 +149,7 @@
     "happy-dom": "20.0.2",
     "license-checker-rseidelsohn": "4.4.2",
     "markdownlint-cli": "0.44.0",
-    "playwright": "1.50.1",
+    "playwright": "1.55.1",
     "prettier": "3.5.3",
     "sass-embedded": "1.85.1",
     "storybook": "8.6.4",
