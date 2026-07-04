@@ -38,11 +38,12 @@ defaults:
 
 jobs:
   build-and-upload:
-    environment: ${{ github.event.inputs.code_signing == 'true' && 'code_signing' || '' }} # コード署名用のenvironment（false時の挙動は2022年7月10日時点で未定義動作）
+    environment: ${{ github.event.inputs.code_signing == 'true' && 'code_signing' || null }} # 手動でコード署名を有効化した場合のみ署名用の Environment Secrets を読む
     env:
       ELECTRON_CACHE: .cache/electron
       ELECTRON_BUILDER_CACHE: .cache/electron-builder
       cache-version: v2
+      MACOS_CODE_SIGNING_ENABLED: ${{ (github.event.inputs.code_signing == 'true' || secrets.MACOS_CODE_SIGNING_ENABLED == 'true') && 'true' || 'false' }}
       # GNUコマンド
       sed: ${{ startsWith(matrix.os, 'macos-') && 'gsed' || 'sed' }}
       # ref: https://docs.sentry.io/platforms/javascript/sourcemaps/uploading/vite/
@@ -256,9 +257,33 @@ jobs:
         if: startsWith(matrix.artifact_name, 'macos-')
         run: mkdir -p prepackage/AivisSpeech.app/Contents/Resources/ja.lproj prepackage/AivisSpeech.app/Contents/Resources/en.lproj
 
-      - name: Ad hoc code signing
-        if: endsWith(matrix.installer_artifact_name, '-dmg') # macOS
-        run: codesign --force --deep -s - prepackage/AivisSpeech.app
+      - name: Setup macOS code signing certificate
+        if: startsWith(matrix.artifact_name, 'macos-') && env.MACOS_CODE_SIGNING_ENABLED == 'true'
+        run: bash tools/codesign_macos.bash setup-keychain
+        env:
+          MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+
+      - name: Developer ID code signing for macOS app
+        if: startsWith(matrix.artifact_name, 'macos-') && env.MACOS_CODE_SIGNING_ENABLED == 'true'
+        run: bash tools/codesign_macos.bash sign-app prepackage/AivisSpeech.app
+        env:
+          MACOS_CODESIGN_ENTITLEMENTS: build/entitlements.mac.plist
+
+      - name: Ad hoc code signing for macOS app
+        if: startsWith(matrix.artifact_name, 'macos-') && env.MACOS_CODE_SIGNING_ENABLED != 'true'
+        run: bash tools/codesign_macos.bash sign-app prepackage/AivisSpeech.app
+        env:
+          MACOS_CODESIGN_IDENTITY: "-"
+          MACOS_CODESIGN_ENTITLEMENTS: build/entitlements.mac.plist
+
+      - name: Notarize macOS app
+        if: startsWith(matrix.artifact_name, 'macos-') && env.MACOS_CODE_SIGNING_ENABLED == 'true'
+        run: bash tools/codesign_macos.bash notarize-app prepackage/AivisSpeech.app
+        env:
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+          APPLE_API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
 
       # - name: Create Linux tar.gz (without nvidia)
       #   if: startsWith(matrix.artifact_name, 'linux-') && !contains(matrix.artifact_name, 'nvidia')
@@ -368,6 +393,25 @@ jobs:
               fi
             }
           done
+
+      - name: Sign and notarize macOS dmg
+        if: endsWith(matrix.installer_artifact_name, '-dmg') && env.MACOS_CODE_SIGNING_ENABLED == 'true'
+        run: |
+          shopt -s nullglob
+          dmg_files=(dist_electron/*.dmg)
+          if [ "${#dmg_files[@]}" -eq 0 ]; then
+            echo "No DMG files found."
+            exit 1
+          fi
+
+          for dmg_file in "${dmg_files[@]}"; do
+            bash tools/codesign_macos.bash sign-dmg "$dmg_file"
+            bash tools/codesign_macos.bash notarize-file "$dmg_file"
+          done
+        env:
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+          APPLE_API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
 
       - name: Reset Code Signing Envs
         if: startsWith(matrix.os, 'windows-') && github.event.inputs.code_signing == 'true'
