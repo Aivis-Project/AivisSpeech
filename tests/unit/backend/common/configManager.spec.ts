@@ -193,3 +193,31 @@ it("setできる", async () => {
   configManager.set("inheritAudioInfo", true);
   expect(configManager.get("inheritAudioInfo")).toBe(true);
 });
+
+it("壊れた分割ペイン位置を未設定として読み込める", async () => {
+  vi.spyOn(TestConfigManager.prototype, "exists").mockImplementation(
+    async () => true,
+  );
+  vi.spyOn(TestConfigManager.prototype, "save").mockImplementation(
+    async () => undefined,
+  );
+  vi.spyOn(TestConfigManager.prototype, "load").mockImplementation(
+    async () => ({
+      ...configBase,
+      splitterPosition: {
+        portraitPaneWidth: 240,
+        audioInfoPaneWidth: NaN,
+        audioDetailPaneHeight: Infinity,
+      },
+    }),
+  );
+
+  const configManager = new TestConfigManager();
+  await configManager.initialize();
+
+  expect(configManager.get("splitterPosition")).toEqual({
+    portraitPaneWidth: 240,
+    audioInfoPaneWidth: undefined,
+    audioDetailPaneHeight: undefined,
+  });
+});

@@ -379,10 +379,18 @@ export const experimentalSettingSchema = z.object({
 
 export type ExperimentalSettingType = z.infer<typeof experimentalSettingSchema>;
 
+const optionalFiniteNumberSchema = z.preprocess((value) => {
+  // 旧バージョンや異常終了時に壊れたレイアウト値が残ると、起動時に設定全体を読めなくなる
+  if (typeof value === "number" && Number.isFinite(value) === false) {
+    return undefined;
+  }
+  return value;
+}, z.number().optional());
+
 export const splitterPositionSchema = z.object({
-  portraitPaneWidth: z.number().optional(),
-  audioInfoPaneWidth: z.number().optional(),
-  audioDetailPaneHeight: z.number().optional(),
+  portraitPaneWidth: optionalFiniteNumberSchema,
+  audioInfoPaneWidth: optionalFiniteNumberSchema,
+  audioDetailPaneHeight: optionalFiniteNumberSchema,
 });
 export type SplitterPositionType = z.infer<typeof splitterPositionSchema>;
 
