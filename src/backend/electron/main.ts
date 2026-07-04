@@ -26,6 +26,7 @@ import { getIpcMainHandle } from "./ipcMainHandle";
 import { EngineInfo } from "@/type/preload";
 import { isMac, isProduction } from "@/helpers/platform";
 import { createLogger } from "@/helpers/log";
+import { filterSentryErrorEvent } from "@/domain/sentryEventFilter";
 
 type SingleInstanceLockData = {
   filePath: string | undefined;
@@ -83,6 +84,16 @@ if (isProduction) {
     dsn: "https://ab3b3a5b0e9d1c90dae483f740dbc78b@o4508551725383680.ingest.us.sentry.io/4508555292901376",
     release: `AivisSpeech@${app.getVersion() === "999.999.999" ? "latest" : app.getVersion()}`,
     environment: "production",
+    // Electron / Chromium の minidump は JavaScript 側の修正に使いにくく、Sentry の quota 消費も大きい
+    // JavaScript 例外の収集は残し、ネイティブクラッシュの送信だけを止める
+    integrations: Sentry.getDefaultIntegrations({}).filter(
+      (integration) => integration.name !== "SentryMinidump",
+    ),
+    // main プロセスでもエラー以外の利用状況は収集しない
+    // AivisSpeech Engine 側と同じく、トレースは送信量に対して得られる情報が少ないため明示的に無効化する
+    tracesSampleRate: 0.0,
+    // ファイルロックや Chromium ネイティブクラッシュなど、実測済みの既知ノイズを送信前に止める
+    beforeSend: filterSentryErrorEvent,
   });
 }
 

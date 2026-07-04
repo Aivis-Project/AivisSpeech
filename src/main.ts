@@ -10,6 +10,10 @@ import { hotkeyPlugin } from "./plugins/hotkeyPlugin";
 import App from "@/components/App.vue";
 import { markdownItPlugin } from "@/plugins/markdownItPlugin";
 import { isProduction } from "@/helpers/platform";
+import {
+  filterSentryErrorEvent,
+  filterSentryTransactionEvent,
+} from "@/domain/sentryEventFilter";
 
 import "@quasar/extras/material-symbols-rounded/material-symbols-rounded.css";
 import "quasar/dist/quasar.sass";
@@ -24,24 +28,12 @@ import "./styles/_index.scss";
 if (isProduction) {
   Sentry.init(
     {
-      integrations: [
-        Sentry.browserTracingIntegration(),
-        Sentry.replayIntegration(),
-      ],
-
-      // Set tracesSampleRate to 1.0 to capture 100%
-      // of transactions for performance monitoring.
-      // We recommend adjusting this value in production
-      // Learn more at
-      // https://docs.sentry.io/platforms/javascript/configuration/options/#traces-sample-rate
-      tracesSampleRate: 1.0,
-
-      // Capture Replay for 10% of all sessions,
-      // plus for 100% of sessions with an error
-      // Learn more at
-      // https://docs.sentry.io/platforms/javascript/session-replay/configuration/#general-integration-configuration
-      replaysSessionSampleRate: 0.1,
-      replaysOnErrorSampleRate: 1.0,
+      // ローカルアプリではエラー以外の利用状況まで収集しない
+      // AivisSpeech Engine 側と同じく、トレースは送信量に対して得られる情報が少ないため明示的に無効化する
+      tracesSampleRate: 0.0,
+      // ローカル環境や Chromium 側の既知ノイズは、Sentry のクォータを消費する前に止める
+      beforeSend: filterSentryErrorEvent,
+      beforeSendTransaction: filterSentryTransactionEvent,
     },
     SentryVue.init,
   );
