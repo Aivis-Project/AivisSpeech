@@ -19,6 +19,10 @@ import {
 const isElectron = process.env.VITE_TARGET === "electron";
 const isBrowser = process.env.VITE_TARGET === "browser";
 const isProduction = process.env.NODE_ENV === "production";
+const shouldUploadSentrySourcemaps =
+  isProduction &&
+  process.env.SENTRY_AUTH_TOKEN != undefined &&
+  process.env.SENTRY_AUTH_TOKEN !== "";
 
 export default defineConfig((options) => {
   const mode = z
@@ -119,6 +123,7 @@ export default defineConfig((options) => {
                       "osx-temperature-sensor",
                     ],
                   }),
+                shouldUploadSentrySourcemaps && createSentryVitePlugin(),
               ],
               build: {
                 outDir: path.resolve(import.meta.dirname, "dist"),
@@ -137,6 +142,7 @@ export default defineConfig((options) => {
               plugins: [
                 tsconfigPaths({ root: import.meta.dirname }),
                 isProduction && checkSuspiciousImportsPlugin({}),
+                shouldUploadSentrySourcemaps && createSentryVitePlugin(),
               ],
               build: {
                 outDir: path.resolve(import.meta.dirname, "dist"),
@@ -145,24 +151,32 @@ export default defineConfig((options) => {
             },
           },
         }),
-        sentryVitePlugin({
-          authToken: process.env.SENTRY_AUTH_TOKEN,
-          org: "aivis-project",
-          project: "aivisspeech",
-          telemetry: false,
-          release: {
-            name: process.env.RELEASE_VERSION ? `AivisSpeech@${process.env.RELEASE_VERSION}` : undefined,
-            setCommits: {
-              auto: true,
-              ignoreMissing: true,
-            },
-          },
-        }),
+        shouldUploadSentrySourcemaps && createSentryVitePlugin(),
       ],
       isBrowser && injectBrowserPreloadPlugin(),
     ],
   };
 });
+
+const createSentryVitePlugin = (): Plugin => {
+  // renderer / main / preload は別々の Vite ビルドなので、各出力ファイルへ同じ release の Debug ID を注入する
+  return sentryVitePlugin({
+    authToken: process.env.SENTRY_AUTH_TOKEN,
+    org: "aivis-project",
+    project: "aivisspeech",
+    telemetry: false,
+    release: {
+      name: process.env.RELEASE_VERSION
+        ? `AivisSpeech@${process.env.RELEASE_VERSION}`
+        : undefined,
+      setCommits: {
+        auto: true,
+        ignoreMissing: true,
+      },
+    },
+  }) as unknown as Plugin;
+};
+
 const cleanDistPlugin = (): Plugin => {
   return {
     name: "clean-dist",
