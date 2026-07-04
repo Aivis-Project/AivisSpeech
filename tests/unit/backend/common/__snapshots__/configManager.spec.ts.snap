@@ -15,33 +15,28 @@ exports[`0.13.0からマイグレーションできる 1`] = `
   "defaultStyleIds": [],
   "editorFont": "default",
   "enableMemoNotation": false,
-  "enableMultiEngine": false,
+  "enableMultiEngine": true,
   "enablePreset": false,
   "enableRubyNotation": false,
-  "engineSettings": {
-    "00000000-0000-0000-0000-000000000000": {
-      "outputSamplingRate": "engineDefault",
-      "useGpu": false,
-    },
-  },
+  "engineSettings": {},
   "experimentalSetting": {
     "enableInterrogativeUpspeak": false,
-    "enableMorphing": false,
-    "enableMultiSelect": false,
-    "shouldKeepTuningOnTextChange": false,
+    "enableMorphing": true,
+    "enableMultiSelect": true,
+    "shouldKeepTuningOnTextChange": true,
     "showParameterPanel": false,
   },
   "hotkeySettings": [
-    {
-      "action": "音声書き出し",
-      "combination": "Ctrl E",
-    },
     {
       "action": "選択音声を書き出し",
       "combination": "E",
     },
     {
-      "action": "音声を繋げて書き出し",
+      "action": "音声書き出し",
+      "combination": "Ctrl E",
+    },
+    {
+      "action": "音声をつなげて書き出し",
       "combination": "",
     },
     {
@@ -51,18 +46,6 @@ exports[`0.13.0からマイグレーションできる 1`] = `
     {
       "action": "連続再生/停止",
       "combination": "Shift Space",
-    },
-    {
-      "action": "ｱｸｾﾝﾄ欄を表示",
-      "combination": "1",
-    },
-    {
-      "action": "ｲﾝﾄﾈｰｼｮﾝ欄を表示",
-      "combination": "2",
-    },
-    {
-      "action": "長さ欄を表示",
-      "combination": "3",
     },
     {
       "action": "テキスト欄を追加",
@@ -129,16 +112,12 @@ exports[`0.13.0からマイグレーションできる 1`] = `
       "combination": "Ctrl O",
     },
     {
-      "action": "テキストを読み込む",
+      "action": "テキストをつなげて書き出し",
       "combination": "",
     },
     {
-      "action": "全体のイントネーションをリセット",
-      "combination": "Ctrl G",
-    },
-    {
-      "action": "選択中のアクセント句のイントネーションをリセット",
-      "combination": "R",
+      "action": "テキストを読み込む",
+      "combination": "",
     },
     {
       "action": "コピー",
@@ -161,43 +140,43 @@ exports[`0.13.0からマイグレーションできる 1`] = `
       "combination": "",
     },
     {
-      "action": "1番目のキャラクターを選択",
+      "action": "1番目の話者を選択",
       "combination": "Ctrl 1",
     },
     {
-      "action": "2番目のキャラクターを選択",
+      "action": "2番目の話者を選択",
       "combination": "Ctrl 2",
     },
     {
-      "action": "3番目のキャラクターを選択",
+      "action": "3番目の話者を選択",
       "combination": "Ctrl 3",
     },
     {
-      "action": "4番目のキャラクターを選択",
+      "action": "4番目の話者を選択",
       "combination": "Ctrl 4",
     },
     {
-      "action": "5番目のキャラクターを選択",
+      "action": "5番目の話者を選択",
       "combination": "Ctrl 5",
     },
     {
-      "action": "6番目のキャラクターを選択",
+      "action": "6番目の話者を選択",
       "combination": "Ctrl 6",
     },
     {
-      "action": "7番目のキャラクターを選択",
+      "action": "7番目の話者を選択",
       "combination": "Ctrl 7",
     },
     {
-      "action": "8番目のキャラクターを選択",
+      "action": "8番目の話者を選択",
       "combination": "Ctrl 8",
     },
     {
-      "action": "9番目のキャラクターを選択",
+      "action": "9番目の話者を選択",
       "combination": "Ctrl 9",
     },
     {
-      "action": "10番目のキャラクターを選択",
+      "action": "10番目の話者を選択",
       "combination": "Ctrl 0",
     },
   ],

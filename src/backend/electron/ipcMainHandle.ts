@@ -30,7 +30,14 @@ const log = createLogger("IpcMainHandle");
 
 // エンジンのフォルダを開く
 function openEngineDirectory(engineId: EngineId) {
-  const engineDirectory = getEngineInfoManager().fetchEngineDirectory(engineId);
+  let engineDirectory: string;
+  try {
+    engineDirectory = getEngineInfoManager().fetchEngineDirectory(engineId);
+  } catch (error) {
+    // Engine 一覧の更新直後は、UI が古い engineId のボタンを押せる瞬間がある
+    log.warn(`Failed to resolve engine directory: ${engineId}`, error);
+    return;
+  }
 
   // Windows環境だとスラッシュ区切りのパスが動かない。
   // path.resolveはWindowsだけバックスラッシュ区切りにしてくれるため、path.resolveを挟む。

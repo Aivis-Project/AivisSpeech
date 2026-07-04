@@ -9,7 +9,13 @@ import semver from "semver";
 import { LatestProjectType, projectSchema } from "./schema";
 import { uuid4 } from "@/helpers/random";
 import { AccentPhrase } from "@/openapi";
-import { DEFAULT_TRACK_NAME } from "@/sing/domain";
+import {
+  DEFAULT_BEATS,
+  DEFAULT_BEAT_TYPE,
+  DEFAULT_BPM,
+  DEFAULT_TPQN,
+  DEFAULT_TRACK_NAME,
+} from "@/sing/domain";
 import { EngineId, StyleId, TrackId, Voice } from "@/type/preload";
 
 // const DEFAULT_SAMPLING_RATE = 44100;
@@ -311,11 +317,73 @@ export const migrateProjectFileObject = async (
   // ----- 以下は AivisSpeech 固有のマイグレーション処理 -----
 
   // 1.1.0 未満 -> 1.1.0-dev 以上へのマイグレーション (開発版のみ常にマイグレーションを実行する)
-  if (semver.satisfies(projectAppVersion, "<1.1.0-dev", semverSatisfiesOptions) || projectAppVersion === "999.999.999") {
+  if (
+    semver.satisfies(
+      projectAppVersion,
+      "<1.1.0-dev",
+      semverSatisfiesOptions,
+    ) ||
+    projectAppVersion === "999.999.999"
+  ) {
+
+    // 古いトーク専用 project は root 直下に audioKeys / audioItems を持つ
+    if (projectData.talk == undefined) {
+      projectData.talk = {
+        audioKeys: projectData.audioKeys,
+        audioItems: projectData.audioItems,
+      };
+      delete projectData.audioKeys;
+      delete projectData.audioItems;
+    }
+
+    // 0.15 未満のトーク音声は voice ではなく engineId / styleId を直接持つ
+    // AivisSpeech では upstream 側の旧マイグレーションをコメントアウトしているため、固有ブロックでも補完する
+    for (const audioItemsKey in projectData.talk.audioItems) {
+      const audioItem = projectData.talk.audioItems[audioItemsKey];
+      if (audioItem.voice != undefined) continue;
+
+      const oldEngineId = audioItem.engineId;
+      const oldStyleId = audioItem.styleId;
+      const voice = voices.find(
+        (voice) =>
+          voice.engineId === oldEngineId && voice.styleId === oldStyleId,
+      );
+      if (voice == undefined) {
+        throw new Error(`voice == undefined: ${oldEngineId}, ${oldStyleId}`);
+      }
+
+      audioItem.voice = voice;
+      delete audioItem.engineId;
+      delete audioItem.styleId;
+    }
 
     // AivisSpeech ではソング機能は封印されているが、実装上の都合で一応マイグレーションしている
     // tracks: Track[] -> tracks: Record<TrackId, Track> + trackOrder: TrackId[]
-    if (Array.isArray(projectData.song.tracks)) {  // すでに変換済みの場合は何もしない
+    if (projectData.song == undefined) {
+      const trackId = TrackId(uuid4());
+      projectData.song = {
+        tpqn: DEFAULT_TPQN,
+        tempos: [{ position: 0, bpm: DEFAULT_BPM }],
+        timeSignatures: [
+          { measureNumber: 1, beats: DEFAULT_BEATS, beatType: DEFAULT_BEAT_TYPE },
+        ],
+        tracks: {
+          [trackId]: {
+            name: DEFAULT_TRACK_NAME,
+            notes: [],
+            pitchEditData: [],
+            solo: false,
+            mute: false,
+            gain: 1,
+            pan: 0,
+            keyRangeAdjustment: 0,
+            volumeRangeAdjustment: 0,
+          },
+        },
+        trackOrder: [trackId],
+      };
+    } else if (Array.isArray(projectData.song.tracks)) {
+      // 旧形式の tracks 配列を、現在の ID 付き tracks 辞書へ変換する
       const newTracks: Record<TrackId, unknown> = {};
       for (const track of projectData.song.tracks) {
         track.name = DEFAULT_TRACK_NAME;
@@ -331,8 +399,9 @@ export const migrateProjectFileObject = async (
 
     // 文内無音倍率の追加
     for (const audioItemsKey in projectData.talk.audioItems) {
-      if (!("pauseLengthScale" in projectData.talk.audioItems[audioItemsKey].query)) {
-        projectData.talk.audioItems[audioItemsKey].query.pauseLengthScale = 1;
+      const query = projectData.talk.audioItems[audioItemsKey].query;
+      if (query != undefined && !("pauseLengthScale" in query)) {
+        query.pauseLengthScale = 1;
       }
     }
 

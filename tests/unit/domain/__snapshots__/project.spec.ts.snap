@@ -30,7 +30,6 @@ exports[`migrateProjectFileObject > v0.14.11 1`] = `
         "notes": [],
         "pan": 0,
         "pitchEditData": [],
-        "singer": undefined,
         "solo": false,
         "volumeRangeAdjustment": 0,
       },

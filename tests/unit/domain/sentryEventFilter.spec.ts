@@ -65,6 +65,8 @@ describe("filterSentryErrorEvent", () => {
     generateExceptionEvent("RuntimeError", "memory access out of bounds"),
     generateExceptionEvent("Error", "Fatal Error: Out of Memory / 0x7ff84c6379da"),
     generateExceptionEvent("Error", "RtlAllocateHeap"),
+    generateExceptionEvent("MemoryError", "Unable to allocate enough memory"),
+    generateExceptionEvent("Error", "Renderer process crashed with OOM"),
     generateExceptionEvent(
       "Error",
       "AbortError: The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22",
@@ -72,6 +74,10 @@ describe("filterSentryErrorEvent", () => {
     generateExceptionEvent(
       "Error",
       "AbortError: The play() request was interrupted by a new load request. https://goo.gl/LdLk22",
+    ),
+    generateExceptionEvent(
+      "NotSupportedError",
+      "NotSupportedError: Failed to load because no supported source was found",
     ),
     generateExceptionEvent(
       "NotFoundError",
@@ -144,8 +150,45 @@ describe("filterSentryErrorEvent", () => {
             stacktrace: {
               frames: [
                 {
+                  function: "BaseThreadInitThunk",
+                },
+                {
                   package:
                     "C:\\WINDOWS\\System32\\DriverStore\\FileRepository\\u0417877.inf_amd64_8b2c2b61b3f8a9e5\\B417004\\atidxx64.dll",
+                },
+              ],
+            },
+          },
+        ],
+      },
+    } as unknown as Event),
+    ({
+      exception: {
+        values: [
+          {
+            type: "EXCEPTION_ACCESS_VIOLATION_READ / 0x0",
+            value: "Fatal Error: EXCEPTION_ACCESS_VIOLATION_READ / 0x0",
+            stacktrace: {
+              frames: [
+                {
+                  function: "BaseThreadInitThunk",
+                },
+              ],
+            },
+          },
+        ],
+      },
+    } as unknown as Event),
+    ({
+      exception: {
+        values: [
+          {
+            type: "SIGSEGV / 0x0",
+            value: "Fatal Error: SIGSEGV / 0x0",
+            stacktrace: {
+              frames: [
+                {
+                  function: "v8::internal::GlobalHandles::Destroy",
                 },
               ],
             },
@@ -210,6 +253,34 @@ describe("filterSentryErrorEvent", () => {
     });
 
     expect(filterSentryErrorEvent(event)).toBe(event);
+  });
+
+  it("循環参照を含む追加情報でも送信前フィルタ内で例外を投げない", () => {
+    const extra: Record<string, unknown> = {
+      reason: "debug metadata",
+    };
+    extra.self = extra;
+    const event: Event = {
+      ...generateExceptionEvent("Error", "修正余地がある通常エラー"),
+      extra,
+    };
+
+    expect(filterSentryErrorEvent(event)).toBe(event);
+  });
+
+  it("循環参照を含むHTTP情報でもinitialize_speakerの500を判定できる", () => {
+    const data: Record<string, unknown> = {
+      url: "http://127.0.0.1:10101/initialize_speaker?speaker=1650575744",
+      status_code: 500,
+    };
+    data.self = data;
+    const event = generateBreadcrumbEvent(
+      "ResponseError",
+      "Response returned an error code",
+      data,
+    );
+
+    expect(filterSentryErrorEvent(event)).toBeNull();
   });
 });
 

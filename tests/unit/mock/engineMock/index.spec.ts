@@ -35,7 +35,8 @@ describe("createOpenAPIEngineMock", () => {
     expect(await hash(await response.arrayBuffer())).toMatchSnapshot();
   });
 
-  test("singFrameAudioQuery", async () => {
+  // AivisSpeech ではソングエディタを提供していないため、ソング API のモック確認だけ実行しない
+  test.skip("singFrameAudioQuery", async () => {
     const response = await mock.singFrameAudioQuery({
       speaker: 0,
       score: {
@@ -51,7 +52,8 @@ describe("createOpenAPIEngineMock", () => {
     expect(response).toMatchSnapshot();
   });
 
-  test("frameSynthesis", async () => {
+  // AivisSpeech ではソングエディタを提供していないため、ソング API のモック確認だけ実行しない
+  test.skip("frameSynthesis", async () => {
     const frameAudioQuery = await mock.singFrameAudioQuery({
       speaker: 0,
       score: {

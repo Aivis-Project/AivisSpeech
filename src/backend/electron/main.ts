@@ -23,14 +23,11 @@ import { registerIpcMainHandle, ipcMainSendProxy, IpcMainHandle } from "./ipc";
 import { getConfigManager } from "./electronConfig";
 import { getEngineAndVvppController } from "./engineAndVvppController";
 import { getIpcMainHandle } from "./ipcMainHandle";
+import { normalizeSingleInstanceLockData } from "./singleInstanceLockData";
 import { EngineInfo } from "@/type/preload";
 import { isMac, isProduction } from "@/helpers/platform";
 import { createLogger } from "@/helpers/log";
 import { filterSentryErrorEvent } from "@/domain/sentryEventFilter";
-
-type SingleInstanceLockData = {
-  filePath: string | undefined;
-};
 
 const isDevelopment = import.meta.env.DEV;
 const isTest = import.meta.env.MODE === "test";
@@ -549,12 +546,13 @@ void app.whenReady().then(async () => {
 
   // 多重起動防止
   // TODO: readyを待たずにもっと早く実行すべき
+  const singleInstanceLockData: Record<string, unknown> = {
+    filePath: initialFilePath,
+  };
   if (
     !isDevelopment &&
     !isTest &&
-    !app.requestSingleInstanceLock({
-      filePath: initialFilePath,
-    } satisfies SingleInstanceLockData)
+    !app.requestSingleInstanceLock(singleInstanceLockData)
   ) {
     log.info("AivisSpeech already running. Cancelling launch.");
     log.info(`File path sent: ${initialFilePath}`);
@@ -583,7 +581,7 @@ void app.whenReady().then(async () => {
 
 // 他のプロセスが起動したとき、`requestSingleInstanceLock`経由で`rawData`が送信される。
 app.on("second-instance", async (_event, _argv, _workDir, rawData) => {
-  const data = rawData as SingleInstanceLockData;
+  const data = normalizeSingleInstanceLockData(rawData);
   const win = windowManager.win;
   if (win == undefined) {
     // TODO: 起動シーケンス中の場合はWindowが作られるまで待つ

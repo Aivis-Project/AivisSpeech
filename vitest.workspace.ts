@@ -5,6 +5,14 @@ import { storybookTest } from "@storybook/experimental-addon-test/vitest-plugin"
 const nodeTestPaths = ["../tests/unit/**/*.node.{test,spec}.ts"];
 const browserTestPaths = ["../tests/unit/**/*.browser.{test,spec}.ts"];
 const normalTestPaths = ["../tests/unit/**/*.{test,spec}.ts"];
+const songUnitTestPaths = [
+  "../tests/unit/domain/sing/**/*.{test,spec}.ts",
+  "../tests/unit/lib/selectPriorPhrase.spec.ts",
+  "../tests/unit/lib/splitLyricsByMoras.spec.ts",
+  "../tests/unit/lib/utaformatixProject/**/*.{test,spec}.ts",
+  "../tests/unit/store/singing.spec.ts",
+];
+const songStoryPaths = ["components/Sing/**/*.stories.ts"];
 
 const ignorePaths = (paths: string[]) => paths.map((path) => `!${path}`);
 
@@ -14,6 +22,9 @@ export default defineWorkspace([
     extends: "./vite.config.ts",
     test: {
       include: nodeTestPaths,
+      // AivisSpeech ではソングエディタを提供していないので、
+      // upstream 追従時のコンフリクト回避のために残しつつも実行しない
+      exclude: songUnitTestPaths,
       name: "node",
       environment: "node",
       globals: true,
@@ -29,6 +40,7 @@ export default defineWorkspace([
         ...normalTestPaths,
         ...ignorePaths(nodeTestPaths),
         ...ignorePaths(browserTestPaths),
+        ...ignorePaths(songUnitTestPaths),
       ],
       globals: true,
       name: "unit",
@@ -72,6 +84,8 @@ export default defineWorkspace([
     test: {
       globals: true,
       name: "storybook",
+      // Storybook 自体には残すが、AivisSpeech で封印しているソング画面の対話テストは実行しない
+      exclude: songStoryPaths,
       browser: {
         enabled: true,
         instances: [{ browser: "chromium" }],

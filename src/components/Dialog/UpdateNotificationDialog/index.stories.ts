@@ -24,6 +24,7 @@ const meta: Meta<typeof Presentation> = {
     downloadProgress: null,
     downloadError: null,
     isMacOS: false,
+    isUpdateSupported: true,
     "onUpdate:dialogOpened": fn(),
     onSkipThisVersionClick: fn(),
     onStartDownload: fn(),
@@ -58,7 +59,7 @@ export const Close: Story = {
 };
 
 export const SkipThisVersion: Story = {
-  name: "スキップボタンを押す",
+  name: "アップデートボタンを押す",
   args: {
     ...Opened.args,
   },
@@ -66,14 +67,12 @@ export const SkipThisVersion: Story = {
     const canvas = within(document.body); // ダイアログなので例外的にdocument.bodyを使う
 
     const button = canvas.getByRole("button", {
-      name: /このバージョンをスキップ/,
+      name: /アップデート/,
     });
     await userEvent.click(button);
 
-    // スキップイベントが呼ばれる
-    await expect(args["onSkipThisVersionClick"]).toBeCalledWith("1.0.0");
-    // ダイアログを閉じるイベントが呼ばれる
-    await expect(args["onUpdate:dialogOpened"]).toBeCalledWith(false);
+    // ダウンロード開始イベントが呼ばれる
+    await expect(args["onStartDownload"]).toBeCalled();
   },
 };
 

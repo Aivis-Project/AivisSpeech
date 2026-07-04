@@ -1,10 +1,14 @@
-import ga4mp, { GA4Instance } from "@analytics-debugger/ga4mp";
+import ga4mp from "@analytics-debugger/ga4mp";
 
 import { getAppInfos } from "@/domain/appInfo";
 
 
 const GA4_MEASUREMENT_ID = "G-TEMWCS6D7B";
 let isEnabled = false;
+type GA4Instance = {
+  trackEvent: (eventName: string, eventParameters?: Record<string, unknown>) => void;
+};
+
 let ga4instance: GA4Instance | null = null;
 
 // GA4 の LocalStorage キー

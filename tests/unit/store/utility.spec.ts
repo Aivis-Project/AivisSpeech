@@ -275,7 +275,7 @@ test("getToolbarButtonName", () => {
   );
   expect(getToolbarButtonName("EXPORT_AUDIO_ALL")).toBe("全部書き出し");
   expect(getToolbarButtonName("EXPORT_AUDIO_CONNECT_ALL")).toBe(
-    "音声を繋げて書き出し",
+    "音声をつなげて書き出し",
   );
   expect(getToolbarButtonName("存在しないタグ" as ToolbarButtonTagType)).toBe(
     undefined,

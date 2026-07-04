@@ -168,6 +168,7 @@ export function getCharacterInfo(
   styleId: StyleId,
 ): CharacterInfo | undefined {
   const engineCharacterInfos = state.characterInfos[engineId];
+  if (engineCharacterInfos == undefined) return undefined;
 
   // (engineId, styleId)で「スタイル付きキャラクター」は一意である
   return engineCharacterInfos.find((characterInfo) =>
@@ -441,7 +442,10 @@ export const audioStore = createPartialStore<AudioStoreTypes>({
 
   LOAD_MORPHABLE_TARGETS: {
     async action({ state, actions, mutations }, { engineId, baseStyleId }) {
-      if (!state.engineManifests[engineId].supportedFeatures?.synthesisMorphing)
+      // Engine の再読み込みや削除直後は、UI 側の監視が古い engineId を持ったまま呼ばれることがある
+      if (
+        !state.engineManifests[engineId]?.supportedFeatures?.synthesisMorphing
+      )
         return;
 
       if (state.morphableTargetsInfo[engineId]?.[baseStyleId]) return;

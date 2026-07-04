@@ -5,10 +5,12 @@ import {
   getConfigSchema,
   ExperimentalSettingType,
 } from "@/type/preload";
+import type { PresetKey, VoiceId } from "@/type/preload";
 import { ensureNotNullish } from "@/helpers/errorHelper";
 import {
   HotkeyCombination,
   getDefaultHotkeySettings,
+  hotkeyActionNameSchema,
   HotkeySettingType,
 } from "@/domain/hotkeyAction";
 import { createLogger } from "@/helpers/log";
@@ -16,6 +18,64 @@ import { createLogger } from "@/helpers/log";
 const log = createLogger("ConfigManager");
 
 const lockKey = "save";
+
+const renamedHotkeyActions = new Map<string, string>([
+  ["一つだけ書き出し", "選択音声を書き出し"],
+  ["音声を繋げて書き出し", "音声をつなげて書き出し"],
+  ["プロジェクト読み込み", "プロジェクトを読み込む"],
+  ["テキスト読み込む", "テキストを読み込む"],
+]);
+
+/**
+ * schema parse 前に、古い設定ファイルの名称を現在の候補へ寄せる
+ * @param data 設定ファイルから読み込んだ生データ
+ */
+function normalizeConfigBeforeParse(data: Record<string, unknown>): void {
+  const hotkeySettings = data.hotkeySettings;
+  if (Array.isArray(hotkeySettings)) {
+    data.hotkeySettings = hotkeySettings
+      .map((hotkeySetting): Record<string, unknown> | undefined => {
+        if (
+          hotkeySetting == undefined ||
+          typeof hotkeySetting !== "object" ||
+          !("action" in hotkeySetting)
+        ) {
+          return undefined;
+        }
+
+        const action = (hotkeySetting as Record<string, unknown>).action;
+        const normalizedAction =
+          typeof action === "string"
+            ? (renamedHotkeyActions.get(action) ?? action)
+            : action;
+
+        // AivisSpeech では使わなくなった upstream 由来の項目は、現在の既定値補完に任せる
+        if (
+          hotkeyActionNameSchema.safeParse(normalizedAction).success === false
+        ) {
+          return undefined;
+        }
+
+        return {
+          ...(hotkeySetting as Record<string, unknown>),
+          action: normalizedAction,
+        };
+      })
+      .filter(
+        (hotkeySetting): hotkeySetting is Record<string, unknown> =>
+          hotkeySetting != undefined,
+      );
+  }
+
+  const toolbarSetting = data.toolbarSetting;
+  if (Array.isArray(toolbarSetting)) {
+    data.toolbarSetting = toolbarSetting.map((toolbarButton: unknown) =>
+      toolbarButton === "EXPORT_AUDIO_ONE"
+        ? "EXPORT_AUDIO_SELECTED"
+        : toolbarButton,
+    );
+  }
+}
 
 const migrations: [string, (store: Record<string, unknown>) => unknown][] = [
   /*
@@ -297,6 +357,49 @@ const migrations: [string, (store: Record<string, unknown>) => unknown][] = [
         delete experimentalSetting.shouldApplyDefaultPresetOnVoiceChanged;
       }
 
+      // VOICEVOX upstream の 25e1176a / 3f41639a で追加された過去不具合の後始末
+      // 当時ソング・ハミング系スタイルでも defaultPresetKeys が作られ、トークのプリセット一覧へ混ざっていた
+      // AivisSpeech ではソングエディタを提供していないが、既存設定ファイルから混入データだけは除去する必要がある
+      const presets = config.presets as ConfigType["presets"];
+      const defaultPresetKeys = config.defaultPresetKeys as
+        | ConfigType["defaultPresetKeys"]
+        | undefined;
+      if (
+        defaultPresetKeys != undefined &&
+        Object.keys(defaultPresetKeys).length > 0
+      ) {
+        const singerPresetKeys: PresetKey[] = [];
+        for (const voiceId of Object.keys(defaultPresetKeys) as VoiceId[]) {
+          // VoiceId の 3番目は styleId なので、既知のソング・ハミング範囲だけを対象にする
+          const styleId = Number(voiceId.split(":")[2]);
+          const isSingerLikeStyle =
+            (styleId >= 3000 && styleId <= 3085) || styleId === 6000;
+          if (isSingerLikeStyle === false) continue;
+
+          const defaultPresetKey = defaultPresetKeys[voiceId];
+          if (defaultPresetKey == undefined) continue;
+          singerPresetKeys.push(defaultPresetKey);
+          delete defaultPresetKeys[voiceId];
+        }
+
+        // 同じプリセットがトーク側からも参照されている場合は、参照先のプリセット本体を残す
+        const remainingDefaultPresetKeys = new Set(
+          Object.values(defaultPresetKeys),
+        );
+        const unusedSingerPresetKeys = singerPresetKeys.filter(
+          (presetKey) => !remainingDefaultPresetKeys.has(presetKey),
+        );
+        for (const presetKey of unusedSingerPresetKeys) {
+          delete presets.items[presetKey];
+        }
+
+        if (unusedSingerPresetKeys.length > 0) {
+          presets.keys = presets.keys.filter(
+            (key) => !unusedSingerPresetKeys.includes(key),
+          );
+        }
+      }
+
       // 書き出しテンプレートから拡張子を削除
       const savingSetting = config.savingSetting as { fileNamePattern: string };
       savingSetting.fileNamePattern = savingSetting.fileNamePattern.replace(
@@ -310,7 +413,6 @@ const migrations: [string, (store: Record<string, unknown>) => unknown][] = [
       }
 
       // プリセットに文内無音倍率を追加
-      const presets = config.presets as ConfigType["presets"];
       for (const preset of Object.values(presets.items)) {
         if (preset == undefined) throw new Error("preset == undefined");
         if (!("pauseLengthScale" in preset)) {
@@ -373,6 +475,7 @@ export abstract class BaseConfigManager {
           log.info(`Migrated ${version} to ${versionRange} successfully.`);
         }
       }
+      normalizeConfigBeforeParse(data);
       this.config = this.migrateHotkeySettings(
         getConfigSchema({ isMac: this.isMac }).parse(data),
       );

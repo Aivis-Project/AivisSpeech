@@ -82,6 +82,11 @@ export default defineConfig((options) => {
     resolve: {
       alias: {
         "@": path.resolve(import.meta.dirname, "src/"),
+        // package.json の module が存在しない minify 版を指しているため、実在する ESM 版へ向ける
+        "@analytics-debugger/ga4mp": path.resolve(
+          import.meta.dirname,
+          "node_modules/@analytics-debugger/ga4mp/dist/ga4mp.esm.js",
+        ),
       },
     },
     plugins: [

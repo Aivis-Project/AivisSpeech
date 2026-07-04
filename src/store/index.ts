@@ -264,15 +264,23 @@ export const indexStore = createPartialStore<IndexStoreTypes>({
             audioItem.voice.styleId,
           );
 
-          if (characterInfo == undefined)
-            throw new Error("assert characterInfo !== undefined");
+          // Engine の追加・削除後は、空セルだけが古い voice を指したまま残ることがある
+          if (characterInfo == undefined) {
+            const defaultStyleId = defaultStyleIds[0];
+            if (defaultStyleId == undefined) return;
+            audioItem.voice = {
+              engineId: defaultStyleId.engineId,
+              speakerId: defaultStyleId.speakerUuid,
+              styleId: defaultStyleId.defaultStyleId,
+            };
+            return;
+          }
 
           const speakerUuid = characterInfo.metas.speakerUuid;
           const defaultStyleId = defaultStyleIds.find(
             (styleId) => speakerUuid == styleId.speakerUuid,
           );
-          if (defaultStyleId == undefined)
-            throw new Error("defaultStyleId == undefined");
+          if (defaultStyleId == undefined) return;
 
           audioItem.voice = {
             engineId: defaultStyleId.engineId,

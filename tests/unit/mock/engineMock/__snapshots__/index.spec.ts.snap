@@ -181,7 +181,9 @@ exports[`createOpenAPIEngineMock > 辞書系 1`] = `
 {
   "00000000-0000-4000-0000-000000000001": {
     "accentAssociativeRule": "*",
-    "accentType": 1,
+    "accentType": [
+      1,
+    ],
     "inflectionalForm": "*",
     "inflectionalType": "*",
     "partOfSpeech": "名詞",
@@ -189,10 +191,16 @@ exports[`createOpenAPIEngineMock > 辞書系 1`] = `
     "partOfSpeechDetail2": "*",
     "partOfSpeechDetail3": "*",
     "priority": 5,
-    "pronunciation": "テストテスト",
-    "stem": "*",
+    "pronunciation": [
+      "テストテスト",
+    ],
+    "stem": [
+      "テスト",
+    ],
     "surface": "テスト",
-    "yomi": "テストテスト",
+    "yomi": [
+      "テストテスト",
+    ],
   },
 }
 `;
@@ -201,7 +209,9 @@ exports[`createOpenAPIEngineMock > 辞書系 2`] = `
 {
   "00000000-0000-4000-0000-000000000001": {
     "accentAssociativeRule": "*",
-    "accentType": 1,
+    "accentType": [
+      1,
+    ],
     "inflectionalForm": "*",
     "inflectionalType": "*",
     "partOfSpeech": "名詞",
@@ -209,10 +219,16 @@ exports[`createOpenAPIEngineMock > 辞書系 2`] = `
     "partOfSpeechDetail2": "*",
     "partOfSpeechDetail3": "*",
     "priority": 5,
-    "pronunciation": "テストテストテスト",
-    "stem": "*",
+    "pronunciation": [
+      "テストテストテスト",
+    ],
+    "stem": [
+      "テスト",
+    ],
     "surface": "テスト",
-    "yomi": "テストテストテスト",
+    "yomi": [
+      "テストテストテスト",
+    ],
   },
 }
 `;

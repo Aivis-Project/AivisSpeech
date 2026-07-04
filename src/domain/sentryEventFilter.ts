@@ -5,6 +5,9 @@ type NativeStackFramePackage = {
   package?: unknown;
 };
 
+const MAX_COLLECT_TEXT_DEPTH = 50;
+const MAX_HTTP_STATUS_DEPTH = 50;
+
 const LOCAL_ENGINE_ENDPOINT_PATTERN =
   /https?:\/\/(?:\[REDACTED_IP\]|(?:127\.0\.0\.1|localhost|\[[^\]]+\]|[0-9.]+)):\d+\/(?:speaker_info|engine_manifest|aivm_models)\b/i;
 const LOCAL_ENGINE_ERROR_ENDPOINT_PATTERN =
@@ -38,7 +41,7 @@ const DROP_ERROR_PATTERNS: readonly RegExp[] = [
   /\bares_dns_rr_get_ttl\b/i,
   /Fatal Error: SIGBUS \/ BUS_ADRERR/i,
   /\bv8::CodeEvent::GetScriptColumn\b/i,
-  /\bBaseThreadInitThunk\b[\s\S]*Fatal Error: EXCEPTION_ACCESS_VIOLATION_READ/i,
+  /Fatal Error: EXCEPTION_ACCESS_VIOLATION_READ[\s\S]*\bBaseThreadInitThunk\b/i,
   /Fatal Error: EXCEPTION_ACCESS_VIOLATION_READ[\s\S]*atidxx64\.dll/i,
   /Fatal Error: EXCEPTION_ACCESS_VIOLATION_READ[\s\S]*D3DCompiler_47\.dll/i,
   /v8::internal::GlobalHandles::Destroy/i,
@@ -147,8 +150,17 @@ const hasInitializeSpeakerHttp500 = (event: Event): boolean => {
   });
 };
 
-const hasHttpStatus500 = (value: unknown): boolean => {
+const hasHttpStatus500 = (
+  value: unknown,
+  visitedObjects = new WeakSet<object>(),
+  depth = 0,
+): boolean => {
   if (value == undefined) {
+    return false;
+  }
+
+  // Sentry の data は外部ライブラリ由来の任意オブジェクトなので、循環や極端な深さでは探索を打ち切る
+  if (depth > MAX_HTTP_STATUS_DEPTH) {
     return false;
   }
 
@@ -163,15 +175,26 @@ const hasHttpStatus500 = (value: unknown): boolean => {
   }
 
   if (Array.isArray(value)) {
-    return value.some((item) => hasHttpStatus500(item));
+    if (visitedObjects.has(value)) {
+      return false;
+    }
+    visitedObjects.add(value);
+    return value.some((item) =>
+      hasHttpStatus500(item, visitedObjects, depth + 1),
+    );
   }
 
   if (typeof value === "object") {
+    if (visitedObjects.has(value)) {
+      return false;
+    }
+    visitedObjects.add(value);
+
     return Object.entries(value).some(([key, item]) => {
       if (/^(?:status_code|statusCode|status)$/i.test(key)) {
         return Number(item) === 500;
       }
-      return hasHttpStatus500(item);
+      return hasHttpStatus500(item, visitedObjects, depth + 1);
     });
   }
 
@@ -243,12 +266,22 @@ const collectSentryEventText = (event: Event, hint?: EventHint): string => {
 
 const collectValueText = (value: unknown): string => {
   const texts: string[] = [];
-  appendText(texts, value);
+  appendText(texts, value, new WeakSet<object>());
   return texts.join("\n");
 };
 
-const appendText = (texts: string[], value: unknown): void => {
+const appendText = (
+  texts: string[],
+  value: unknown,
+  visitedObjects = new WeakSet<object>(),
+  depth = 0,
+): void => {
   if (value == undefined) {
+    return;
+  }
+
+  // Sentry のイベントには外部由来の任意オブジェクトが入るため、送信前フィルタ内での stack overflow を避ける
+  if (depth > MAX_COLLECT_TEXT_DEPTH) {
     return;
   }
 
@@ -276,16 +309,26 @@ const appendText = (texts: string[], value: unknown): void => {
   }
 
   if (Array.isArray(value)) {
+    if (visitedObjects.has(value)) {
+      return;
+    }
+    visitedObjects.add(value);
+
     for (const item of value) {
-      appendText(texts, item);
+      appendText(texts, item, visitedObjects, depth + 1);
     }
     return;
   }
 
   if (typeof value === "object") {
+    if (visitedObjects.has(value)) {
+      return;
+    }
+    visitedObjects.add(value);
+
     for (const [key, item] of Object.entries(value)) {
       texts.push(key);
-      appendText(texts, item);
+      appendText(texts, item, visitedObjects, depth + 1);
     }
   }
 };
