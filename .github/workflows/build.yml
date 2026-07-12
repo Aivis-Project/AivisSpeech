@@ -270,6 +270,7 @@ jobs:
         env:
           MACOS_CODESIGN_ENTITLEMENTS: build/entitlements.mac.plist
 
+      # Developer ID がない場合も Apple Silicon で実行できるよう、Hardened Runtime を付けずにアプリ全体を ad hoc 署名する
       - name: Ad hoc code signing for macOS app
         if: startsWith(matrix.artifact_name, 'macos-') && env.MACOS_CODE_SIGNING_ENABLED != 'true'
         run: bash tools/codesign_macos.bash sign-app prepackage/AivisSpeech.app

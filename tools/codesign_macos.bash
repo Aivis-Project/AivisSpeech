@@ -123,11 +123,11 @@ function codesign_common_args() {
     fi
 
     echo --force
-    echo --options
-    echo runtime
-
-    # ad hoc 署名では timestamp を付けられないため Developer ID 署名時だけ付与
+    # Team ID を持たない ad hoc 署名で Hardened Runtime を有効にすると、
+    # PyInstaller の実行ファイルが同梱の Python 共有ライブラリを読み込めなくなる
     if [ "$identity" != "-" ]; then
+        echo --options
+        echo runtime
         echo --timestamp
     fi
 
@@ -314,7 +314,8 @@ function notarize_app() {
     fi
 
     local temp_root="${RUNNER_TEMP:-/tmp}"
-    local archive_path="$temp_root/$(basename "$app_path").notarize-$$.zip"
+    local archive_path
+    archive_path="$temp_root/$(basename "$app_path").notarize-$$.zip"
     local -a auth_args=()
 
     while IFS= read -r arg; do
