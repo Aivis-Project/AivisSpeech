@@ -12,6 +12,10 @@ export const engineStoreState: EngineStoreState = {
 };
 const { info, error } = createLogger("store/engine");
 
+// 初回起動では Engine がモデルをダウンロードするため、低速な回線でも完了を待つ
+const ENGINE_STARTUP_MAX_RETRY_COUNT = 5 * 60;
+const ENGINE_STARTUP_RETRY_INTERVAL_MS = 1_000;
+
 export const engineStore = createPartialStore<EngineStoreTypes>({
   /**
    * backendのエンジン情報をstateに同期して初期化する。
@@ -184,7 +188,11 @@ export const engineStore = createPartialStore<EngineStoreTypes>({
         if (engineState == undefined)
           throw new Error(`No such engineState set: engineId == ${engineId}`);
 
-        for (let i = 0; i < 100; i++) {
+        for (
+          let retryCount = 0;
+          retryCount < ENGINE_STARTUP_MAX_RETRY_COUNT;
+          retryCount++
+        ) {
           engineState = state.engineStates[engineId]; // FIXME: explicit undefined
           if (engineState == undefined)
             throw new Error(`No such engineState set: engineId == ${engineId}`);
@@ -200,7 +208,9 @@ export const engineStore = createPartialStore<EngineStoreTypes>({
               })
               .then((instance) => instance.invoke("version")({}));
           } catch {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+            await new Promise((resolve) =>
+              setTimeout(resolve, ENGINE_STARTUP_RETRY_INTERVAL_MS),
+            );
 
             info(`Waiting engine ${engineId}`);
             continue;

@@ -28,8 +28,8 @@ const UPDATE_SERVER_STARTUP_TIMEOUT_MS = 30000;
 const UPDATE_SERVER_POLL_INTERVAL_MS = 500;
 /** updater E2E 全体のタイムアウト時間 (ms) */
 const UPDATE_E2E_TIMEOUT_MS = 20 * 60 * 1000;
-/** 初回起動ダイアログまたは更新通知ダイアログを待つ上限時間 (ms) */
-const INITIAL_OR_UPDATE_DIALOG_TIMEOUT_MS = 120 * 1000;
+/** Engine の初回ダウンロード後に表示されるダイアログを待つ上限時間 (ms) */
+const INITIAL_OR_UPDATE_DIALOG_TIMEOUT_MS = 6 * 60 * 1000;
 /** 初回起動ダイアログまたは更新通知ダイアログを探す間隔 (ms) */
 const INITIAL_OR_UPDATE_DIALOG_POLL_INTERVAL_MS = 500;
 /** Windows インストーラー起動ボタンの click を待つ上限時間 (ms) */
